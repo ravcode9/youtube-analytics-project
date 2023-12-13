@@ -1,6 +1,4 @@
 import json
-import os
-from googleapiclient.discovery import Resource
 from src.channel import Channel  # Замените 'your_module_name' на имя вашего модуля
 import pytest
 

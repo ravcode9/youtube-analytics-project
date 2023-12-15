@@ -1,36 +1,67 @@
-import json
-from src.channel import Channel  # Замените 'your_module_name' на имя вашего модуля
 import pytest
-
-
+import os
+from unittest.mock import MagicMock, patch
+from src.channel import Channel
+from src.api import Api
 @pytest.fixture
-def channel_instance():
-    return Channel("test_channel_id")
+def mock_youtube_service():
+    with patch.object(Api, 'get_youtube_api_key', return_value='your_api_key'):
+        youtube_service = MagicMock()
+        with patch.object(Channel, 'get_service', return_value=youtube_service):
+            yield youtube_service
 
 
-def test_channel_print_info(capfd, channel_instance, monkeypatch):
-    # Меняем значение переменной окружения API_YOUTUBE для теста
-    monkeypatch.setenv('API_YOUTUBE', 'test_api_key')
+def test_print_info(capsys, mock_youtube_service):
+    channel_id = 'your_channel_id'
+    channel = Channel(channel_id)
+    channel.print_info()
 
-    # Меняем behavior youtube.channels().list для теста
-    class ChannelsList:
-        def list(self, **kwargs):
-            assert kwargs == {'part': 'snippet,contentDetails,statistics', 'id': 'test_channel_id'}
-            return self
+    captured = capsys.readouterr()
+    assert "Title:" in captured.out
+    assert "Description:" in captured.out
+    assert "URL:" in captured.out
+    assert "Subscriber Count:" in captured.out
+    assert "Video Count:" in captured.out
+    assert "View Count:" in captured.out
 
-        def execute(self):
-            return {'kind': 'youtube#channelListResponse', 'etag': 'RuuXzTIr0OoDqI4S0RU6n4FqKEM',
-                    'pageInfo': {'totalResults': 0, 'resultsPerPage': 5}}
 
-    channel_instance.youtube.channels().list = ChannelsList()
+def test_to_json(tmpdir, capsys):
+    channel_id = 'your_channel_id'
+    channel = Channel(channel_id)
 
-    # Запускаем метод print_info()
-    channel_instance.print_info()
+    filename = 'test.json'
+    json_file_path = os.path.join(str(tmpdir), filename)
 
-    # Получаем вывод метода print_info()
-    captured = capfd.readouterr()
+    with patch.object(channel, '_fetch_channel_data'):
+        # Подменяем вызов _fetch_channel_data, чтобы не обращаться к API
+        with patch.object(os.path, 'join', return_value=json_file_path):
+            channel.to_json(filename)
 
-    # Проверяем, что вывод содержит правильные данные
-    expected_output = json.dumps({'kind': 'youtube#channelListResponse', 'etag': 'RuuXzTIr0OoDqI4S0RU6n4FqKEM',
-                                  'pageInfo': {'totalResults': 0, 'resultsPerPage': 5}}, indent=2, ensure_ascii=False)
-    assert captured.out.strip() == expected_output.strip()
+    assert os.path.exists(json_file_path)
+
+    captured = capsys.readouterr()
+    assert "Произошла ошибка: Нет данных о канале в ответе API" in captured.out
+
+
+def test_successful_api_response(mock_youtube_service):
+    # Modify the mock_youtube_service to return a specific response
+    mock_youtube_service.channels().list.return_value.execute.return_value = {
+        'items': [{
+            'snippet': {
+                'title': 'Test Channel',
+                'description': 'Test Description'
+            },
+            'statistics': {
+                'subscriberCount': '1000',
+                'videoCount': '50',
+                'viewCount': '50000'
+            }
+        }]
+    }
+
+    channel_id = 'test_channel_id'
+    channel = Channel(channel_id)
+    assert channel.title == 'Test Channel'
+    assert channel.video_count == 50
+    assert channel._subscriber_count == 1000
+    assert channel._view_count == 50000

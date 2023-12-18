@@ -15,6 +15,34 @@ class Channel:
         self._view_count = None
         self._fetch_channel_data()
 
+    def __str__(self):
+        return f"{self._title} ({self._url})"
+
+    def __add__(self, other):
+        return self._subscriber_count + other._subscriber_count
+
+    def __sub__(self, other):
+        return self._subscriber_count - other._subscriber_count
+
+    def __eq__(self, other):
+        return self._subscriber_count == other._subscriber_count
+
+    def __ne__(self, other):
+        return self._subscriber_count != other._subscriber_count
+
+    def __lt__(self, other):
+        return self._subscriber_count < other._subscriber_count
+
+    def __le__(self, other):
+        return self._subscriber_count <= other._subscriber_count
+
+    def __gt__(self, other):
+        return self._subscriber_count > other._subscriber_count
+
+    def __ge__(self, other):
+        return self._subscriber_count >= other._subscriber_count
+
+
     def _fetch_channel_data(self):
         try:
             self._title = "Default Title"

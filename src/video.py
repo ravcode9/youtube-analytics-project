@@ -1,6 +1,8 @@
+import datetime
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from src.api import Api
+
 
 class Video:
     def __init__(self, video_id):
@@ -46,9 +48,49 @@ class Video:
         return build('youtube', 'v3', developerKey=api_key)
 
 class PLVideo(Video):
-    def __init__(self, video_id, playlist_id):
+    def __init__(self, video_id, playlist_id, duration):
         super().__init__(video_id)
         self._playlist_id = playlist_id
+        self._duration = duration
+        self._fetch_video_data()
 
-    def __str__(self):
-        return super().__str__()
+    @property
+    def duration(self):
+        return self._duration
+
+    def _fetch_video_duration(self):
+        try:
+            youtube = self.get_service()
+            response = youtube.videos().list(
+                part='contentDetails',
+                id=self._video_id
+            ).execute()
+
+            if 'items' in response:
+                video_details = response['items'][0]['contentDetails']
+                duration_iso = video_details['duration']
+                duration = self._parse_duration(duration_iso)
+                return duration
+
+        except HttpError as e:
+            print(f'Произошла ошибка при получении данных о видео: {e}')
+
+        return datetime.timedelta()
+    @staticmethod
+    def _parse_duration(duration_iso):
+        duration_str = duration_iso[2:]
+        duration = datetime.timedelta()
+
+        if 'H' in duration_str:
+            hours, duration_str = duration_str.split('H')
+            duration += datetime.timedelta(hours=int(hours))
+
+        if 'M' in duration_str:
+            minutes, duration_str = duration_str.split('M')
+            duration += datetime.timedelta(minutes=int(minutes))
+
+        if 'S' in duration_str:
+            seconds, _ = duration_str.split('S')
+            duration += datetime.timedelta(seconds=int(seconds))
+
+        return duration

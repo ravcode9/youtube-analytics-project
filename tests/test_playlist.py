@@ -2,6 +2,8 @@ from datetime import timedelta
 import pytest
 from unittest.mock import MagicMock, patch
 from src.playlist import PlayList
+
+
 @pytest.fixture
 def mock_channel_service(monkeypatch):
     mock_service = MagicMock()

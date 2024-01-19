@@ -109,4 +109,3 @@ class PlayList:
             print(f'Произошла ошибка при получении данных о видео: {e}')
 
         return datetime.timedelta()
-
